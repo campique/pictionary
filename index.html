@@ -10,21 +10,47 @@
     <script src="/socket.io/socket.io.js"></script>
 </head>
 <body class="bg-gradient-to-r from-blue-400 via-purple-500 to-pink-500 min-h-screen font-['Poppins']">
-    <div class="container mx-auto px-4 py-6 max-w-md">
+    <div class="container mx-auto px-4 py-6 max-w-4xl">
         <h1 class="text-4xl font-bold text-center text-white mb-6 shadow-lg">PictoKids</h1>
         
         <div id="main-menu" class="text-center space-y-4">
-            <button id="local-game" class="bg-yellow-400 hover:bg-yellow-500 text-purple-800 font-bold py-2 px-4 rounded-full text-lg transition duration-300 ease-in-out transform hover:scale-105 shadow-lg w-full">
+            <button id="local-game" class="bg-yellow-400 hover:bg-yellow-500 text-purple-800 font-bold py-2 px-4 rounded-full text-lg transition duration-300 ease-in-out transform hover:scale-105 shadow-lg w-full max-w-md">
                 Speel Lokaal
             </button>
-            <button id="online-game" class="bg-green-400 hover:bg-green-500 text-purple-800 font-bold py-2 px-4 rounded-full text-lg transition duration-300 ease-in-out transform hover:scale-105 shadow-lg w-full">
+            <button id="online-game" class="bg-green-400 hover:bg-green-500 text-purple-800 font-bold py-2 px-4 rounded-full text-lg transition duration-300 ease-in-out transform hover:scale-105 shadow-lg w-full max-w-md">
                 Speel Online
             </button>
         </div>
 
         <div id="lobby" class="hidden mt-6 bg-white rounded-lg shadow-2xl p-4">
             <h2 class="text-2xl font-bold text-center text-purple-800 mb-4">Lobby</h2>
-            <div id="tables" class="space-y-4"></div>
+            <div id="tables" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div class="table bg-purple-100 p-4 rounded-lg shadow">
+                    <h3 class="font-bold text-purple-800">Tafel 1</h3>
+                    <p class="players">0/2 spelers</p>
+                    <button class="join-table bg-green-400 hover:bg-green-500 text-purple-800 font-bold py-1 px-3 rounded-full mt-2">Deelnemen</button>
+                </div>
+                <div class="table bg-purple-100 p-4 rounded-lg shadow">
+                    <h3 class="font-bold text-purple-800">Tafel 2</h3>
+                    <p class="players">0/2 spelers</p>
+                    <button class="join-table bg-green-400 hover:bg-green-500 text-purple-800 font-bold py-1 px-3 rounded-full mt-2">Deelnemen</button>
+                </div>
+                <div class="table bg-purple-100 p-4 rounded-lg shadow">
+                    <h3 class="font-bold text-purple-800">Tafel 3</h3>
+                    <p class="players">0/2 spelers</p>
+                    <button class="join-table bg-green-400 hover:bg-green-500 text-purple-800 font-bold py-1 px-3 rounded-full mt-2">Deelnemen</button>
+                </div>
+                <div class="table bg-purple-100 p-4 rounded-lg shadow">
+                    <h3 class="font-bold text-purple-800">Tafel 4</h3>
+                    <p class="players">0/2 spelers</p>
+                    <button class="join-table bg-green-400 hover:bg-green-500 text-purple-800 font-bold py-1 px-3 rounded-full mt-2">Deelnemen</button>
+                </div>
+                <div class="table bg-purple-100 p-4 rounded-lg shadow">
+                    <h3 class="font-bold text-purple-800">Tafel 5</h3>
+                    <p class="players">0/2 spelers</p>
+                    <button class="join-table bg-green-400 hover:bg-green-500 text-purple-800 font-bold py-1 px-3 rounded-full mt-2">Deelnemen</button>
+                </div>
+            </div>
         </div>
 
         <div id="game-area" class="hidden mt-6 bg-white rounded-lg shadow-2xl p-4">
@@ -116,25 +142,30 @@
         }
 
         function updateLobby(lobbyData) {
-            tables.innerHTML = '';
             lobbyData.forEach((table, index) => {
-                const tableElement = document.createElement('div');
-                tableElement.className = 'bg-purple-100 p-4 rounded-lg shadow';
-                tableElement.innerHTML = `
-                    <h3 class="font-bold text-purple-800">Tafel ${index + 1}</h3>
-                    <p>${table.players}/2 spelers</p>
-                    ${table.players < 2 ? '<button class="join-table bg-green-400 hover:bg-green-500 text-purple-800 font-bold py-1 px-3 rounded-full mt-2">Deelnemen</button>' : ''}
-                `;
+                const tableElement = document.querySelectorAll('.table')[index];
+                const playersElement = tableElement.querySelector('.players');
+                const joinButton = tableElement.querySelector('.join-table');
+
+                playersElement.textContent = `${table.players}/2 spelers`;
+
                 if (table.players < 2) {
-                    tableElement.querySelector('.join-table').addEventListener('click', () => joinTable(index));
+                    joinButton.classList.remove('hidden');
+                    joinButton.onclick = () => joinTable(index);
+                } else {
+                    joinButton.classList.add('hidden');
                 }
-                tables.appendChild(tableElement);
+
+                if (table.players === 1) {
+                    playersElement.textContent += ' - Wachten op speler';
+                }
             });
         }
 
         function joinTable(tableIndex) {
             socket.emit('joinTable', tableIndex);
             currentTable = tableIndex;
+            document.querySelectorAll('.join-table').forEach(btn => btn.disabled = true);
         }
 
         function startLocalGame() {
@@ -288,7 +319,7 @@
 
         function drawLine(x1, y1, x2, y2, color) {
             ctx.beginPath();
-            ctx.moveTo(x1, y1);
+            ctx.moveTo(x1, y1);            
             ctx.lineTo(x2, y2);
             ctx.strokeStyle = color;
             ctx.lineWidth = 5;
