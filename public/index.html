@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PictoKids</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.5.1/dist/confetti.browser.min.js"></script>
+    <script src="/socket.io/socket.io.js"></script>
+</head>
+<body class="bg-gradient-to-r from-blue-400 via-purple-500 to-pink-500 min-h-screen font-['Poppins']">
+    <div class="container mx-auto px-4 py-6 max-w-4xl">
+        <h1 class="text-4xl font-bold text-center text-white mb-6 shadow-lg">PictoKids</h1>
+        
+        <div id="main-menu" class="text-center space-y-4">
+            <button id="local-game" class="bg-yellow-400 hover:bg-yellow-500 text-purple-800 font-bold py-2 px-4 rounded-full text-lg transition duration-300 ease-in-out transform hover:scale-105 shadow-lg w-full max-w-md">
+                Speel Lokaal
+            </button>
+            <button id="online-game" class="bg-green-400 hover:bg-green-500 text-purple-800 font-bold py-2 px-4 rounded-full text-lg transition duration-300 ease-in-out transform hover:scale-105 shadow-lg w-full max-w-md">
+                Speel Online
+            </button>
+        </div>
+
+        <div id="lobby" class="hidden mt-6 bg-white rounded-lg shadow-2xl p-4">
+            <h2 class="text-2xl font-bold text-center text-purple-800 mb-4">Lobby</h2>
+            <div id="tables" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div class="table bg-purple-100 p-4 rounded-lg shadow">
+                    <h3 class="font-bold text-purple-800">Tafel 1</h3>
+                    <p class="players">0/2 spelers</p>
+                    <button class="join-table bg-green-400 hover:bg-green-500 text-purple-800 font-bold py-1 px-3 rounded-full mt-2">Deelnemen</button>
+                </div>
+                <div class="table bg-purple-100 p-4 rounded-lg shadow">
+                    <h3 class="font-bold text-purple-800">Tafel 2</h3>
+                    <p class="players">0/2 spelers</p>
+                    <button class="join-table bg-green-400 hover:bg-green-500 text-purple-800 font-bold py-1 px-3 rounded-full mt-2">Deelnemen</button>
+                </div>
+                <div class="table bg-purple-100 p-4 rounded-lg shadow">
+                    <h3 class="font-bold text-purple-800">Tafel 3</h3>
+                    <p class="players">0/2 spelers</p>
+                    <button class="join-table bg-green-400 hover:bg-green-500 text-purple-800 font-bold py-1 px-3 rounded-full mt-2">Deelnemen</button>
+                </div>
+                <div class="table bg-purple-100 p-4 rounded-lg shadow">
+                    <h3 class="font-bold text-purple-800">Tafel 4</h3>
+                    <p class="players">0/2 spelers</p>
+                    <button class="join-table bg-green-400 hover:bg-green-500 text-purple-800 font-bold py-1 px-3 rounded-full mt-2">Deelnemen</button>
+                </div>
+                <div class="table bg-purple-100 p-4 rounded-lg shadow">
+                    <h3 class="font-bold text-purple-800">Tafel 5</h3>
+                    <p class="players">0/2 spelers</p>
+                    <button class="join-table bg-green-400 hover:bg-green-500 text-purple-800 font-bold py-1 px-3 rounded-full mt-2">Deelnemen</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="game-area" class="hidden mt-6 bg-white rounded-lg shadow-2xl p-4">
+            <div id="game-info" class="flex justify-between mb-4 text-purple-800 text-sm">
+                <div id="word-to-draw" class="font-semibold"></div>
+                <div id="timer"></div>
+                <div id="score" class="font-semibold"></div>
+            </div>
+            
+            <div id="canvas-container" class="w-full aspect-[3/4] relative">
+                <canvas id="drawing-board" class="absolute top-0 left-0 w-full h-full border-4 border-purple-500 rounded-lg bg-white touch-none"></canvas>
+            </div>
+            
+            <div id="color-palette" class="flex justify-center mt-4 space-x-2"></div>
+            
+            <div id="guess-area" class="mt-4 text-center">
+                <input type="text" id="guess-input" placeholder="Raad het woord" class="border-2 border-purple-300 rounded-full px-3 py-1 w-2/3 focus:outline-none focus:border-purple-500">
+                <button id="submit-guess" class="bg-purple-500 hover:bg-purple-600 text-white font-bold py-1 px-4 rounded-full ml-2 transition duration-300 ease-in-out transform hover:scale-105">
+                    Raad
+                </button>
+            </div>
+            
+            <div id="feedback" class="mt-4 text-center font-bold text-lg text-purple-600"></div>
+        </div>
+    </div>
+
+    <script>
+        // Game variables
+        let currentWord, timeLeft, score, currentPlayer, gameMode, currentTable;
+        const words = ['kat', 'hond', 'boom', 'huis', 'zon', 'bloem', 'auto', 'vliegtuig', 'vis', 'vogel'];
+        const colors = ['#000000', '#ff0000', '#00ff00', '#0000ff', '#ffff00', '#ff00ff', '#00ffff'];
+
+        // DOM elements
+        const mainMenu = document.getElementById('main-menu');
+        const lobby = document.getElementById('lobby');
+        const tables = document.getElementById('tables');
+        const gameArea = document.getElementById('game-area');
+        const localGameBtn = document.getElementById('local-game');
+        const onlineGameBtn = document.getElementById('online-game');
+        const canvas = document.getElementById('drawing-board');
+        const ctx = canvas.getContext('2d');
+        const guessInput = document.getElementById('guess-input');
+        const submitGuessBtn = document.getElementById('submit-guess');
+        const wordToDrawElement = document.getElementById('word-to-draw');
+        const timerElement = document.getElementById('timer');
+        const scoreElement = document.getElementById('score');
+        const feedbackElement = document.getElementById('feedback');
+        const colorPalette = document.getElementById('color-palette');
+
+        // Drawing variables
+        let isDrawing = false;
+        let currentColor = '#000000';
+        let lastX = 0;
+        let lastY = 0;
+
+        // Event listeners
+        localGameBtn.addEventListener('click', startLocalGame);
+        onlineGameBtn.addEventListener('click', showLobby);
+        submitGuessBtn.addEventListener('click', submitGuess);
+
+        // Touch events
+        canvas.addEventListener('touchstart', handleStart, { passive: false });
+        canvas.addEventListener('touchmove', handleMove, { passive: false });
+        canvas.addEventListener('touchend', handleEnd, { passive: false });
+
+        // Mouse events
+        canvas.addEventListener('mousedown', handleStart);
+        canvas.addEventListener('mousemove', handleMove);
+        canvas.addEventListener('mouseup', handleEnd);
+        canvas.addEventListener('mouseout', handleEnd);
+
+        // Resize event
+        window.addEventListener('resize', resizeCanvas);
+
+        // Socket.io setup
+        const socket = io();
+
+        socket.on('lobbyUpdate', updateLobby);
+        socket.on('gameStart', startOnlineGame);
+        socket.on('draw', (data) => drawLine(data.x1, data.y1, data.x2, data.y2, data.color));
+        socket.on('clear', () => ctx.clearRect(0, 0, canvas.width, canvas.height));
+        socket.on('newRound', startNewRound);
+        socket.on('updateScore', updateScore);
+
+        function showLobby() {
+            mainMenu.classList.add('hidden');
+            lobby.classList.remove('hidden');
+            socket.emit('enterLobby');
+        }
+
+        function updateLobby(lobbyData) {
+            lobbyData.forEach((table, index) => {
+                const tableElement = document.querySelectorAll('.table')[index];
+                const playersElement = tableElement.querySelector('.players');
+                const joinButton = tableElement.querySelector('.join-table');
+
+                playersElement.textContent = `${table.players}/2 spelers`;
+
+                if (table.players < 2) {
+                    joinButton.classList.remove('hidden');
+                    joinButton.onclick = () => joinTable(index);
+                } else {
+                    joinButton.classList.add('hidden');
+                }
+
+                if (table.players === 1) {
+                    playersElement.textContent += ' - Wachten op speler';
+                }
+            });
+        }
+
+        function joinTable(tableIndex) {
+            socket.emit('joinTable', tableIndex);
+            currentTable = tableIndex;
+            document.querySelectorAll('.join-table').forEach(btn => btn.disabled = true);
+        }
+
+        function startLocalGame() {
+            gameMode = 'local';
+            mainMenu.classList.add('hidden');
+            gameArea.classList.remove('hidden');
+            initializeGame();
+            resizeCanvas();
+        }
+
+        function startOnlineGame(gameData) {
+            gameMode = 'online';
+            lobby.classList.add('hidden');
+            gameArea.classList.remove('hidden');
+            currentPlayer = gameData.role;
+            initializeGame();
+            resizeCanvas();
+        }
+
+        function initializeGame() {
+            score = 0;
+            updateScore();
+            if (gameMode === 'local') {
+                nextRound();
+            }
+        }
+
+        function startNewRound(roundData) {
+            currentWord = roundData.word;
+            timeLeft = 60;
+            updateGameInfo();
+            clearCanvas();
+            startTimer();
+        }
+
+        function nextRound() {
+            currentWord = getRandomWord();
+            timeLeft = 60;
+            updateGameInfo();
+            clearCanvas();
+            startTimer();
+        }
+
+        function getRandomWord() {
+            return words[Math.floor(Math.random() * words.length)];
+        }
+
+        function updateGameInfo() {
+            if (currentPlayer === 'drawer') {
+                wordToDrawElement.textContent = `Teken: ${currentWord}`;
+                guessInput.classList.add('hidden');
+                submitGuessBtn.classList.add('hidden');
+            } else {
+                wordToDrawElement.textContent = 'Raad het woord!';
+                guessInput.classList.remove('hidden');
+                submitGuessBtn.classList.remove('hidden');
+            }
+        }
+
+        function startTimer() {
+            const timerInterval = setInterval(() => {
+                timeLeft--;
+                timerElement.textContent = `Tijd: ${timeLeft}s`;
+                if (timeLeft <= 0) {
+                    clearInterval(timerInterval);
+                    endRound();
+                }
+            }, 1000);
+        }
+
+        function endRound() {
+            feedbackElement.textContent = currentPlayer === 'drawer' ? 
+                'Tijd voorbij! Wissel van beurt.' : 
+                `Tijd voorbij! Het woord was: ${currentWord}`;
+            if (gameMode === 'local') {
+                currentPlayer = currentPlayer === 'drawer' ? 'guesser' : 'drawer';
+                setTimeout(nextRound, 3000);
+            } else {
+                socket.emit('endRound', currentTable);
+            }
+        }
+
+        function updateScore(newScore) {
+            score = newScore;
+            scoreElement.textContent = `Score: ${score}`;
+        }
+
+        function submitGuess() {
+            if (currentPlayer !== 'guesser') return;
+            const guess = guessInput.value.toLowerCase();
+            if (guess === currentWord) {
+                score += timeLeft;
+                updateScore(score);
+                feedbackElement.textContent = 'Goed geraden!';
+                confetti({
+                    particleCount: 100,
+                    spread: 70,
+                    origin: { y: 0.6 }
+                });
+                if (gameMode === 'online') {
+                    socket.emit('correctGuess', { table: currentTable, score: score });
+                } else {
+                    endRound();
+                }
+            } else {
+                feedbackElement.textContent = 'Probeer opnieuw!';
+            }
+            guessInput.value = '';
+        }
+
+        // Drawing functions
+        function handleStart(e) {
+            e.preventDefault();
+            if (currentPlayer !== 'drawer') return;
+            isDrawing = true;
+            [lastX, lastY] = getCoordinates(e);
+        }
+
+        function handleMove(e) {
+            e.preventDefault();
+            if (!isDrawing || currentPlayer !== 'drawer') return;
+            const [x, y] = getCoordinates(e);
+            drawLine(lastX, lastY, x, y, currentColor);
+            if (gameMode === 'online') {
+                socket.emit('draw', { table: currentTable, x1: lastX, y1: lastY, x2: x, y2: y, color: currentColor });
+            }
+            [lastX, lastY] = [x, y];
+        }
+
+        function handleEnd(e) {
+            e.preventDefault();
+            isDrawing = false;
+        }
+
+        function getCoordinates(e) {
+            const rect = canvas.getBoundingClientRect();
+            const scaleX = canvas.width / rect.width;
+            const scaleY = canvas.height / rect.height;
+
+            if (e.touches && e.touches[0]) {
+                return [
+                    (e.touches[0].clientX - rect.left) * scaleX,
+                    (e.touches[0].clientY - rect.top) * scaleY
+                ];
+            }
+            return [
+                (e.clientX - rect.left) * scaleX,
+                (e.clientY - rect.top) * scaleY
+            ];
+        }
+
+        function drawLine(x1, y1, x2, y2, color) {
+            ctx.beginPath();
+            ctx.moveTo(x1, y1);            
+            ctx.lineTo(x2, y2);
+            ctx.strokeStyle = color;
+            ctx.lineWidth = 5;
+            ctx.lineCap = 'round';
+            ctx.stroke();
+        }
+
+        function clearCanvas() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            if (gameMode === 'online') {
+                socket.emit('clear', currentTable);
+            }
+        }
+
+        function resizeCanvas() {
+            const container = document.getElementById('canvas-container');
+            const containerWidth = container.clientWidth;
+            const containerHeight = container.clientHeight;
+            
+            canvas.width = containerWidth;
+            canvas.height = containerHeight;
+            
+            clearCanvas();
+        }
+
+        // Initialize color palette
+        colors.forEach(color => {
+            const colorOption = document.createElement('div');
+            colorOption.className = 'w-8 h-8 rounded-full cursor-pointer transition duration-300 ease-in-out transform hover:scale-110';
+            colorOption.style.backgroundColor = color;
+            colorOption.addEventListener('click', () => {
+                currentColor = color;
+                document.querySelectorAll('#color-palette div').forEach(el => el.classList.remove('ring-4'));
+                colorOption.classList.add('ring-4', 'ring-purple-500');
+            });
+            colorPalette.appendChild(colorOption);
+        });
+    </script>
+</body>
+</html>
