@@ -22,6 +22,11 @@
             </button>
         </div>
 
+        <div id="lobby" class="hidden mt-6 bg-white rounded-lg shadow-2xl p-4">
+            <h2 class="text-2xl font-bold text-center text-purple-800 mb-4">Lobby</h2>
+            <div id="tables" class="space-y-4"></div>
+        </div>
+
         <div id="game-area" class="hidden mt-6 bg-white rounded-lg shadow-2xl p-4">
             <div id="game-info" class="flex justify-between mb-4 text-purple-800 text-sm">
                 <div id="word-to-draw" class="font-semibold"></div>
@@ -48,12 +53,14 @@
 
     <script>
         // Game variables
-        let currentWord, timeLeft, score, currentPlayer, gameMode;
+        let currentWord, timeLeft, score, currentPlayer, gameMode, currentTable;
         const words = ['kat', 'hond', 'boom', 'huis', 'zon', 'bloem', 'auto', 'vliegtuig', 'vis', 'vogel'];
         const colors = ['#000000', '#ff0000', '#00ff00', '#0000ff', '#ffff00', '#ff00ff', '#00ffff'];
 
         // DOM elements
         const mainMenu = document.getElementById('main-menu');
+        const lobby = document.getElementById('lobby');
+        const tables = document.getElementById('tables');
         const gameArea = document.getElementById('game-area');
         const localGameBtn = document.getElementById('local-game');
         const onlineGameBtn = document.getElementById('online-game');
@@ -75,7 +82,7 @@
 
         // Event listeners
         localGameBtn.addEventListener('click', startLocalGame);
-        onlineGameBtn.addEventListener('click', startOnlineGame);
+        onlineGameBtn.addEventListener('click', showLobby);
         submitGuessBtn.addEventListener('click', submitGuess);
 
         // Touch events
@@ -92,7 +99,44 @@
         // Resize event
         window.addEventListener('resize', resizeCanvas);
 
-        // Game functions
+        // Socket.io setup
+        const socket = io();
+
+        socket.on('lobbyUpdate', updateLobby);
+        socket.on('gameStart', startOnlineGame);
+        socket.on('draw', (data) => drawLine(data.x1, data.y1, data.x2, data.y2, data.color));
+        socket.on('clear', () => ctx.clearRect(0, 0, canvas.width, canvas.height));
+        socket.on('newRound', startNewRound);
+        socket.on('updateScore', updateScore);
+
+        function showLobby() {
+            mainMenu.classList.add('hidden');
+            lobby.classList.remove('hidden');
+            socket.emit('enterLobby');
+        }
+
+        function updateLobby(lobbyData) {
+            tables.innerHTML = '';
+            lobbyData.forEach((table, index) => {
+                const tableElement = document.createElement('div');
+                tableElement.className = 'bg-purple-100 p-4 rounded-lg shadow';
+                tableElement.innerHTML = `
+                    <h3 class="font-bold text-purple-800">Tafel ${index + 1}</h3>
+                    <p>${table.players}/2 spelers</p>
+                    ${table.players < 2 ? '<button class="join-table bg-green-400 hover:bg-green-500 text-purple-800 font-bold py-1 px-3 rounded-full mt-2">Deelnemen</button>' : ''}
+                `;
+                if (table.players < 2) {
+                    tableElement.querySelector('.join-table').addEventListener('click', () => joinTable(index));
+                }
+                tables.appendChild(tableElement);
+            });
+        }
+
+        function joinTable(tableIndex) {
+            socket.emit('joinTable', tableIndex);
+            currentTable = tableIndex;
+        }
+
         function startLocalGame() {
             gameMode = 'local';
             mainMenu.classList.add('hidden');
@@ -101,19 +145,29 @@
             resizeCanvas();
         }
 
-        function startOnlineGame() {
+        function startOnlineGame(gameData) {
             gameMode = 'online';
-            mainMenu.classList.add('hidden');
+            lobby.classList.add('hidden');
             gameArea.classList.remove('hidden');
+            currentPlayer = gameData.role;
             initializeGame();
             resizeCanvas();
         }
 
         function initializeGame() {
             score = 0;
-            currentPlayer = 'drawer';
             updateScore();
-            nextRound();
+            if (gameMode === 'local') {
+                nextRound();
+            }
+        }
+
+        function startNewRound(roundData) {
+            currentWord = roundData.word;
+            timeLeft = 60;
+            updateGameInfo();
+            clearCanvas();
+            startTimer();
         }
 
         function nextRound() {
@@ -155,11 +209,16 @@
             feedbackElement.textContent = currentPlayer === 'drawer' ? 
                 'Tijd voorbij! Wissel van beurt.' : 
                 `Tijd voorbij! Het woord was: ${currentWord}`;
-            currentPlayer = currentPlayer === 'drawer' ? 'guesser' : 'drawer';
-            setTimeout(nextRound, 3000);
+            if (gameMode === 'local') {
+                currentPlayer = currentPlayer === 'drawer' ? 'guesser' : 'drawer';
+                setTimeout(nextRound, 3000);
+            } else {
+                socket.emit('endRound', currentTable);
+            }
         }
 
-        function updateScore() {
+        function updateScore(newScore) {
+            score = newScore;
             scoreElement.textContent = `Score: ${score}`;
         }
 
@@ -168,14 +227,18 @@
             const guess = guessInput.value.toLowerCase();
             if (guess === currentWord) {
                 score += timeLeft;
-                updateScore();
+                updateScore(score);
                 feedbackElement.textContent = 'Goed geraden!';
                 confetti({
                     particleCount: 100,
                     spread: 70,
                     origin: { y: 0.6 }
                 });
-                endRound();
+                if (gameMode === 'online') {
+                    socket.emit('correctGuess', { table: currentTable, score: score });
+                } else {
+                    endRound();
+                }
             } else {
                 feedbackElement.textContent = 'Probeer opnieuw!';
             }
@@ -196,7 +259,7 @@
             const [x, y] = getCoordinates(e);
             drawLine(lastX, lastY, x, y, currentColor);
             if (gameMode === 'online') {
-                emitDraw(lastX, lastY, x, y, currentColor);
+                socket.emit('draw', { table: currentTable, x1: lastX, y1: lastY, x2: x, y2: y, color: currentColor });
             }
             [lastX, lastY] = [x, y];
         }
@@ -236,7 +299,7 @@
         function clearCanvas() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             if (gameMode === 'online') {
-                socket.emit('clear');
+                socket.emit('clear', currentTable);
             }
         }
 
@@ -262,21 +325,6 @@
                 colorOption.classList.add('ring-4', 'ring-purple-500');
             });
             colorPalette.appendChild(colorOption);
-        });
-
-        // Socket.io gerelateerde code
-        const socket = io();
-
-        function emitDraw(x1, y1, x2, y2, color) {
-            socket.emit('draw', { x1, y1, x2, y2, color });
-        }
-
-        socket.on('draw', (data) => {
-            drawLine(data.x1, data.y1, data.x2, data.y2, data.color);
-        });
-
-        socket.on('clear', () => {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
         });
     </script>
 </body>
