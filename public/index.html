@@ -25,31 +25,7 @@
         <div id="lobby" class="hidden mt-6 bg-white rounded-lg shadow-2xl p-4">
             <h2 class="text-2xl font-bold text-center text-purple-800 mb-4">Lobby</h2>
             <div id="tables" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                <div class="table bg-purple-100 p-4 rounded-lg shadow">
-                    <h3 class="font-bold text-purple-800">Tafel 1</h3>
-                    <p class="players">0/2 spelers</p>
-                    <button class="join-table bg-green-400 hover:bg-green-500 text-purple-800 font-bold py-1 px-3 rounded-full mt-2">Deelnemen</button>
-                </div>
-                <div class="table bg-purple-100 p-4 rounded-lg shadow">
-                    <h3 class="font-bold text-purple-800">Tafel 2</h3>
-                    <p class="players">0/2 spelers</p>
-                    <button class="join-table bg-green-400 hover:bg-green-500 text-purple-800 font-bold py-1 px-3 rounded-full mt-2">Deelnemen</button>
-                </div>
-                <div class="table bg-purple-100 p-4 rounded-lg shadow">
-                    <h3 class="font-bold text-purple-800">Tafel 3</h3>
-                    <p class="players">0/2 spelers</p>
-                    <button class="join-table bg-green-400 hover:bg-green-500 text-purple-800 font-bold py-1 px-3 rounded-full mt-2">Deelnemen</button>
-                </div>
-                <div class="table bg-purple-100 p-4 rounded-lg shadow">
-                    <h3 class="font-bold text-purple-800">Tafel 4</h3>
-                    <p class="players">0/2 spelers</p>
-                    <button class="join-table bg-green-400 hover:bg-green-500 text-purple-800 font-bold py-1 px-3 rounded-full mt-2">Deelnemen</button>
-                </div>
-                <div class="table bg-purple-100 p-4 rounded-lg shadow">
-                    <h3 class="font-bold text-purple-800">Tafel 5</h3>
-                    <p class="players">0/2 spelers</p>
-                    <button class="join-table bg-green-400 hover:bg-green-500 text-purple-800 font-bold py-1 px-3 rounded-full mt-2">Deelnemen</button>
-                </div>
+                <!-- Table elements will be dynamically added here -->
             </div>
         </div>
 
@@ -65,6 +41,10 @@
             </div>
             
             <div id="color-palette" class="flex justify-center mt-4 space-x-2"></div>
+            
+            <button id="clear-canvas" class="bg-red-500 hover:bg-red-600 text-white font-bold py-1 px-4 rounded-full ml-2 transition duration-300 ease-in-out transform hover:scale-105 mt-2">
+                Wis tekening
+            </button>
             
             <div id="guess-area" class="mt-4 text-center">
                 <input type="text" id="guess-input" placeholder="Raad het woord" class="border-2 border-purple-300 rounded-full px-3 py-1 w-2/3 focus:outline-none focus:border-purple-500">
@@ -99,6 +79,7 @@
         const scoreElement = document.getElementById('score');
         const feedbackElement = document.getElementById('feedback');
         const colorPalette = document.getElementById('color-palette');
+        const clearCanvasBtn = document.getElementById('clear-canvas');
 
         // Drawing variables
         let isDrawing = false;
@@ -110,6 +91,7 @@
         localGameBtn.addEventListener('click', startLocalGame);
         onlineGameBtn.addEventListener('click', showLobby);
         submitGuessBtn.addEventListener('click', submitGuess);
+        clearCanvasBtn.addEventListener('click', clearCanvas);
 
         // Touch events
         canvas.addEventListener('touchstart', handleStart, { passive: false });
@@ -134,31 +116,46 @@
         socket.on('clear', () => ctx.clearRect(0, 0, canvas.width, canvas.height));
         socket.on('newRound', startNewRound);
         socket.on('updateScore', updateScore);
+        socket.on('playerLeft', () => {
+            alert('De andere speler heeft het spel verlaten. Je wordt teruggestuurd naar de lobby.');
+            showLobby();
+        });
 
         function showLobby() {
             mainMenu.classList.add('hidden');
+            gameArea.classList.add('hidden');
             lobby.classList.remove('hidden');
             socket.emit('enterLobby');
         }
 
+        function leaveLobby() {
+            lobby.classList.add('hidden');
+        }
+
         function updateLobby(lobbyData) {
+            tables.innerHTML = '';
             lobbyData.forEach((table, index) => {
-                const tableElement = document.querySelectorAll('.table')[index];
-                const playersElement = tableElement.querySelector('.players');
+                const tableElement = document.createElement('div');
+                tableElement.className = 'table bg-purple-100 p-4 rounded-lg shadow';
+                tableElement.innerHTML = `
+                    <h3 class="font-bold text-purple-800">Tafel ${index + 1}</h3>
+                    <p class="players">${table.players}/2 spelers</p>
+                    <button class="join-table bg-green-400 hover:bg-green-500 text-purple-800 font-bold py-1 px-3 rounded-full mt-2">Deelnemen</button>
+                `;
                 const joinButton = tableElement.querySelector('.join-table');
 
-                playersElement.textContent = `${table.players}/2 spelers`;
-
                 if (table.players < 2) {
-                    joinButton.classList.remove('hidden');
                     joinButton.onclick = () => joinTable(index);
                 } else {
-                    joinButton.classList.add('hidden');
+                    joinButton.disabled = true;
+                    joinButton.classList.add('opacity-50', 'cursor-not-allowed');
                 }
 
                 if (table.players === 1) {
-                    playersElement.textContent += ' - Wachten op speler';
+                    tableElement.querySelector('.players').textContent += ' - Wachten op speler';
                 }
+
+                tables.appendChild(tableElement);
             });
         }
 
@@ -178,7 +175,7 @@
 
         function startOnlineGame(gameData) {
             gameMode = 'online';
-            lobby.classList.add('hidden');
+            leaveLobby();
             gameArea.classList.remove('hidden');
             currentPlayer = gameData.role;
             initializeGame();
@@ -218,10 +215,12 @@
                 wordToDrawElement.textContent = `Teken: ${currentWord}`;
                 guessInput.classList.add('hidden');
                 submitGuessBtn.classList.add('hidden');
+                clearCanvasBtn.classList.remove('hidden');
             } else {
                 wordToDrawElement.textContent = 'Raad het woord!';
                 guessInput.classList.remove('hidden');
                 submitGuessBtn.classList.remove('hidden');
+                clearCanvasBtn.classList.add('hidden');
             }
         }
 
@@ -249,7 +248,7 @@
         }
 
         function updateScore(newScore) {
-            score = newScore;
+            score = newScore || score;
             scoreElement.textContent = `Score: ${score}`;
         }
 
@@ -351,12 +350,24 @@
             colorOption.className = 'w-8 h-8 rounded-full cursor-pointer transition duration-300 ease-in-out transform hover:scale-110';
             colorOption.style.backgroundColor = color;
             colorOption.addEventListener('click', () => {
+                current            clearCanvas();
+        }
+
+        // Initialize color palette
+        colors.forEach(color => {
+            const colorOption = document.createElement('div');
+            colorOption.className = 'w-8 h-8 rounded-full cursor-pointer transition duration-300 ease-in-out transform hover:scale-110';
+            colorOption.style.backgroundColor = color;
+            colorOption.addEventListener('click', () => {
                 currentColor = color;
                 document.querySelectorAll('#color-palette div').forEach(el => el.classList.remove('ring-4'));
                 colorOption.classList.add('ring-4', 'ring-purple-500');
             });
             colorPalette.appendChild(colorOption);
         });
+
+        // Set initial color
+        document.querySelector('#color-palette div').click();
     </script>
 </body>
 </html>
