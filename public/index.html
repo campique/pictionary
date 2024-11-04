@@ -14,10 +14,10 @@
         <h1 class="text-4xl font-bold text-center text-white mb-6 shadow-lg">PictoKids</h1>
         
         <div id="main-menu" class="text-center space-y-4">
-            <button id="local-game" class="bg-yellow-400 hover:bg-yellow-500 text-purple-800 font-bold py-2 px-4 rounded-full text-lg transition duration-300 ease-in-out transform hover:scale-105 shadow-lg w-full max-w-md">
+            <button id="local-game" onclick="console.log('Local game clicked'); startLocalGame();" class="bg-yellow-400 hover:bg-yellow-500 text-purple-800 font-bold py-2 px-4 rounded-full text-lg transition duration-300 ease-in-out transform hover:scale-105 shadow-lg w-full max-w-md">
                 Speel Lokaal
             </button>
-            <button id="online-game" class="bg-green-400 hover:bg-green-500 text-purple-800 font-bold py-2 px-4 rounded-full text-lg transition duration-300 ease-in-out transform hover:scale-105 shadow-lg w-full max-w-md">
+            <button id="online-game" onclick="console.log('Online game clicked'); showLobby();" class="bg-green-400 hover:bg-green-500 text-purple-800 font-bold py-2 px-4 rounded-full text-lg transition duration-300 ease-in-out transform hover:scale-105 shadow-lg w-full max-w-md">
                 Speel Online
             </button>
         </div>
@@ -58,6 +58,8 @@
     </div>
 
     <script>
+        console.log("Script is loaded");
+
         // Game variables
         let currentWord, timeLeft, score, currentPlayer, gameMode, currentTable;
         const words = ['kat', 'hond', 'boom', 'huis', 'zon', 'bloem', 'auto', 'vliegtuig', 'vis', 'vogel'];
@@ -88,8 +90,14 @@
         let lastY = 0;
 
         // Event listeners
-        localGameBtn.addEventListener('click', startLocalGame);
-        onlineGameBtn.addEventListener('click', showLobby);
+        localGameBtn.addEventListener('click', () => {
+            console.log("Local game button clicked");
+            startLocalGame();
+        });
+        onlineGameBtn.addEventListener('click', () => {
+            console.log("Online game button clicked");
+            showLobby();
+        });
         submitGuessBtn.addEventListener('click', submitGuess);
         clearCanvasBtn.addEventListener('click', clearCanvas);
 
@@ -109,6 +117,9 @@
 
         // Socket.io setup
         const socket = io();
+        socket.on('connect', () => {
+            console.log('Connected to server');
+        });
 
         socket.on('lobbyUpdate', updateLobby);
         socket.on('gameStart', startOnlineGame);
@@ -122,6 +133,7 @@
         });
 
         function showLobby() {
+            console.log("Showing lobby");
             mainMenu.classList.add('hidden');
             gameArea.classList.add('hidden');
             lobby.classList.remove('hidden');
@@ -133,6 +145,7 @@
         }
 
         function updateLobby(lobbyData) {
+            console.log("Updating lobby", lobbyData);
             tables.innerHTML = '';
             lobbyData.forEach((table, index) => {
                 const tableElement = document.createElement('div');
@@ -160,12 +173,14 @@
         }
 
         function joinTable(tableIndex) {
+            console.log("Joining table", tableIndex);
             socket.emit('joinTable', tableIndex);
             currentTable = tableIndex;
             document.querySelectorAll('.join-table').forEach(btn => btn.disabled = true);
         }
 
         function startLocalGame() {
+            console.log("Starting local game");
             gameMode = 'local';
             mainMenu.classList.add('hidden');
             gameArea.classList.remove('hidden');
@@ -174,6 +189,7 @@
         }
 
         function startOnlineGame(gameData) {
+            console.log("Starting online game", gameData);
             gameMode = 'online';
             leaveLobby();
             gameArea.classList.remove('hidden');
@@ -350,15 +366,6 @@
             colorOption.className = 'w-8 h-8 rounded-full cursor-pointer transition duration-300 ease-in-out transform hover:scale-110';
             colorOption.style.backgroundColor = color;
             colorOption.addEventListener('click', () => {
-                current            clearCanvas();
-        }
-
-        // Initialize color palette
-        colors.forEach(color => {
-            const colorOption = document.createElement('div');
-            colorOption.className = 'w-8 h-8 rounded-full cursor-pointer transition duration-300 ease-in-out transform hover:scale-110';
-            colorOption.style.backgroundColor = color;
-            colorOption.addEventListener('click', () => {
                 currentColor = color;
                 document.querySelectorAll('#color-palette div').forEach(el => el.classList.remove('ring-4'));
                 colorOption.classList.add('ring-4', 'ring-purple-500');
@@ -368,6 +375,8 @@
 
         // Set initial color
         document.querySelector('#color-palette div').click();
+
+        console.log("Script initialization complete");
     </script>
 </body>
 </html>
