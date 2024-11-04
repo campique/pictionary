@@ -254,6 +254,49 @@
             });
             colorPalette.appendChild(colorOption);
         });
+        <script src="/socket.io/socket.io.js"></script>
+<script>
+  const socket = io();
+
+  // Voeg deze functies toe aan uw bestaande tekenfuncties
+  function emitDraw(x1, y1, x2, y2, color) {
+    socket.emit('draw', { x1, y1, x2, y2, color });
+  }
+
+  socket.on('draw', (data) => {
+    drawLine(data.x1, data.y1, data.x2, data.y2, data.color);
+  });
+
+  function clearCanvas() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    socket.emit('clear');
+  }
+
+  socket.on('clear', () => {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+  });
+
+  // Wijzig de drawLine functie
+  function drawLine(x1, y1, x2, y2, color) {
+    ctx.beginPath();
+    ctx.moveTo(x1, y1);
+    ctx.lineTo(x2, y2);
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 5;
+    ctx.lineCap = 'round';
+    ctx.stroke();
+  }
+
+  // Wijzig de handleMove functie
+  function handleMove(e) {
+    e.preventDefault();
+    if (!isDrawing || currentPlayer !== 'drawer') return;
+    const [x, y] = getCoordinates(e);
+    drawLine(lastX, lastY, x, y, currentColor);
+    emitDraw(lastX, lastY, x, y, currentColor);
+    [lastX, lastY] = [x, y];
+  }
+</script>
     </script>
 </body>
 </html>
