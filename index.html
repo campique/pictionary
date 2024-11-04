@@ -7,6 +7,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.5.1/dist/confetti.browser.min.js"></script>
+    <script src="/socket.io/socket.io.js"></script>
 </head>
 <body class="bg-gradient-to-r from-blue-400 via-purple-500 to-pink-500 min-h-screen font-['Poppins']">
     <div class="container mx-auto px-4 py-6 max-w-md">
@@ -101,7 +102,11 @@
         }
 
         function startOnlineGame() {
-            alert('Online multiplayer functionaliteit is nog niet geïmplementeerd.');
+            gameMode = 'online';
+            mainMenu.classList.add('hidden');
+            gameArea.classList.remove('hidden');
+            initializeGame();
+            resizeCanvas();
         }
 
         function initializeGame() {
@@ -189,7 +194,10 @@
             e.preventDefault();
             if (!isDrawing || currentPlayer !== 'drawer') return;
             const [x, y] = getCoordinates(e);
-            drawLine(lastX, lastY, x, y);
+            drawLine(lastX, lastY, x, y, currentColor);
+            if (gameMode === 'online') {
+                emitDraw(lastX, lastY, x, y, currentColor);
+            }
             [lastX, lastY] = [x, y];
         }
 
@@ -215,11 +223,11 @@
             ];
         }
 
-        function drawLine(x1, y1, x2, y2) {
+        function drawLine(x1, y1, x2, y2, color) {
             ctx.beginPath();
             ctx.moveTo(x1, y1);
             ctx.lineTo(x2, y2);
-            ctx.strokeStyle = currentColor;
+            ctx.strokeStyle = color;
             ctx.lineWidth = 5;
             ctx.lineCap = 'round';
             ctx.stroke();
@@ -227,6 +235,9 @@
 
         function clearCanvas() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
+            if (gameMode === 'online') {
+                socket.emit('clear');
+            }
         }
 
         function resizeCanvas() {
@@ -237,8 +248,6 @@
             canvas.width = containerWidth;
             canvas.height = containerHeight;
             
-            // Redraw any existing content if necessary
-            // For now, we'll just clear the canvas
             clearCanvas();
         }
 
@@ -254,49 +263,21 @@
             });
             colorPalette.appendChild(colorOption);
         });
-        <script src="/socket.io/socket.io.js"></script>
-<script>
-  const socket = io();
 
-  // Voeg deze functies toe aan uw bestaande tekenfuncties
-  function emitDraw(x1, y1, x2, y2, color) {
-    socket.emit('draw', { x1, y1, x2, y2, color });
-  }
+        // Socket.io gerelateerde code
+        const socket = io();
 
-  socket.on('draw', (data) => {
-    drawLine(data.x1, data.y1, data.x2, data.y2, data.color);
-  });
+        function emitDraw(x1, y1, x2, y2, color) {
+            socket.emit('draw', { x1, y1, x2, y2, color });
+        }
 
-  function clearCanvas() {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    socket.emit('clear');
-  }
+        socket.on('draw', (data) => {
+            drawLine(data.x1, data.y1, data.x2, data.y2, data.color);
+        });
 
-  socket.on('clear', () => {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-  });
-
-  // Wijzig de drawLine functie
-  function drawLine(x1, y1, x2, y2, color) {
-    ctx.beginPath();
-    ctx.moveTo(x1, y1);
-    ctx.lineTo(x2, y2);
-    ctx.strokeStyle = color;
-    ctx.lineWidth = 5;
-    ctx.lineCap = 'round';
-    ctx.stroke();
-  }
-
-  // Wijzig de handleMove functie
-  function handleMove(e) {
-    e.preventDefault();
-    if (!isDrawing || currentPlayer !== 'drawer') return;
-    const [x, y] = getCoordinates(e);
-    drawLine(lastX, lastY, x, y, currentColor);
-    emitDraw(lastX, lastY, x, y, currentColor);
-    [lastX, lastY] = [x, y];
-  }
-</script>
+        socket.on('clear', () => {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+        });
     </script>
 </body>
 </html>
