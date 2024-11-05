@@ -79,9 +79,30 @@ function showLobby() {
 }
 
 function updateLobby(lobbyData) {
+    console.log("Updating lobby", lobbyData);
     tables.innerHTML = '';
     lobbyData.forEach((table, index) => {
-        const tableElement = createTableElement(table, index);
+        const tableElement = document.createElement('div');
+        tableElement.className = 'table bg-purple-100 p-4 rounded-lg shadow';
+        tableElement.innerHTML = `
+            <h3 class="font-bold text-purple-800">Tafel ${index + 1}</h3>
+            <p class="players">${table.players}/2 spelers</p>
+            ${table.playerNames && table.playerNames.length > 0 ? `<p class="text-sm">${table.playerNames.join(', ')}</p>` : ''}
+            <button class="join-table bg-green-400 hover:bg-green-500 text-purple-800 font-bold py-1 px-3 rounded-full mt-2">Deelnemen</button>
+        `;
+        const joinButton = tableElement.querySelector('.join-table');
+
+        if (table.players < 2) {
+            joinButton.onclick = () => joinTable(index);
+        } else {
+            joinButton.disabled = true;
+            joinButton.classList.add('opacity-50', 'cursor-not-allowed');
+        }
+
+        if (table.players === 1) {
+            tableElement.querySelector('.players').textContent += ' - Wachten op speler';
+        }
+
         tables.appendChild(tableElement);
     });
 }
@@ -148,7 +169,28 @@ function updateGameInfo() {
 }
 
 function startTimer() {
-    // Timer implementation
+    timeLeft = 60;
+    timerBar = document.createElement('div');
+    timerBar.className = 'h-2 bg-green-500 transition-all duration-1000 ease-linear';
+    timerElement.innerHTML = '';
+    timerElement.appendChild(timerBar);
+
+    const timerInterval = setInterval(() => {
+        timeLeft--;
+        const percentage = (timeLeft / 60) * 100;
+        timerBar.style.width = `${percentage}%`;
+        
+        if (percentage < 66 && percentage >= 33) {
+            timerBar.classList.replace('bg-green-500', 'bg-yellow-500');
+        } else if (percentage < 33) {
+            timerBar.classList.replace('bg-yellow-500', 'bg-red-500');
+        }
+
+        if (timeLeft <= 0) {
+            clearInterval(timerInterval);
+            endRound();
+        }
+    }, 1000);
 }
 
 function endRound() {
@@ -253,12 +295,15 @@ function getRandomWord() {
     return words[Math.floor(Math.random() * words.length)];
 }
 
-function createTableElement(table, index) {
-    // Implementation for creating table element
-}
-
 function handleCorrectGuess() {
-    // Implementation for handling correct guess
+    feedbackElement.textContent = 'Correct geraden!';
+    if (gameMode === 'online') {
+        socket.emit('correctGuess', { table: currentTable, timeLeft });
+    } else {
+        score += timeLeft;
+        updateScore({ id: socket.id, name: playerName, score });
+        endRound();
+    }
 }
 
 function handlePlayerLeft() {
