@@ -24,10 +24,10 @@
         <h1 class="text-4xl font-bold text-center text-white mb-6 shadow-lg">PictoKids</h1>
         
         <div id="main-menu" class="text-center space-y-4 hidden">
-            <button id="local-game" onclick="console.log('Local game clicked'); startLocalGame();" class="bg-yellow-400 hover:bg-yellow-500 text-purple-800 font-bold py-2 px-4 rounded-full text-lg transition duration-300 ease-in-out transform hover:scale-105 shadow-lg w-full max-w-md">
+            <button id="local-game" class="bg-yellow-400 hover:bg-yellow-500 text-purple-800 font-bold py-2 px-4 rounded-full text-lg transition duration-300 ease-in-out transform hover:scale-105 shadow-lg w-full max-w-md">
                 Speel Lokaal
             </button>
-            <button id="online-game" onclick="console.log('Online game clicked'); showLobby();" class="bg-green-400 hover:bg-green-500 text-purple-800 font-bold py-2 px-4 rounded-full text-lg transition duration-300 ease-in-out transform hover:scale-105 shadow-lg w-full max-w-md">
+            <button id="online-game" class="bg-green-400 hover:bg-green-500 text-purple-800 font-bold py-2 px-4 rounded-full text-lg transition duration-300 ease-in-out transform hover:scale-105 shadow-lg w-full max-w-md">
                 Speel Online
             </button>
         </div>
@@ -70,7 +70,7 @@
     </div>
 
     <script>
-        console.log("Script is loaded");
+                console.log("Script is loaded");
 
         // Game variables
         let currentWord, timeLeft, score, currentPlayer, gameMode, currentTable;
@@ -105,14 +105,8 @@
 
         // Event listeners
         document.getElementById('submit-name').addEventListener('click', setPlayerName);
-        localGameBtn.addEventListener('click', () => {
-            console.log("Local game button clicked");
-            startLocalGame();
-        });
-        onlineGameBtn.addEventListener('click', () => {
-            console.log("Online game button clicked");
-            showLobby();
-        });
+        localGameBtn.addEventListener('click', startLocalGame);
+        onlineGameBtn.addEventListener('click', showLobby);
         submitGuessBtn.addEventListener('click', submitGuess);
         clearCanvasBtn.addEventListener('click', clearCanvas);
 
@@ -310,34 +304,51 @@
         }
 
         function updateScore(scoreData) {
-    if (scoreData.id === socket.id) {
-        score = scoreData.score;
-        scoreElement.textContent = `Jouw score: ${score}`;
-    } else {
-        document.getElementById('opponent-score').textContent = `${opponentName}: ${scoreData.score}`;
-    }
-}
-
-function submitGuess() {
-    if (currentPlayer !== 'guesser') return;
-    const guess = guessInput.value.toLowerCase();
-    if (guess === currentWord) {
-        feedbackElement.textContent = 'Goed geraden!';
-        confetti({
-            particleCount: 100,
-            spread: 70,
-            origin: { y: 0.6 }
-        });
-        if (gameMode === 'online') {
-            socket.emit('correctGuess', { table: currentTable, timeLeft: timeLeft });
-        } else {
-            endRound();
+            if (scoreData.id === socket.id) {
+                score = scoreData.score;
+                scoreElement.textContent = `Jouw score: ${score}`;
+            } else {
+                document.getElementById('opponent-score').textContent = `${opponentName}: ${scoreData.score}`;
+            }
         }
-    } else {
-        feedbackElement.textContent = 'Probeer opnieuw!';
-    }
-    guessInput.value = '';
-}
+
+        function submitGuess() {
+            if (currentPlayer !== 'guesser' : 'drawer';
+                setTimeout(nextRound, 3000);
+            } else {
+                socket.emit('endRound', currentTable);
+            }
+        }
+
+        function updateScore(scoreData) {
+            if (scoreData.id === socket.id) {
+                score = scoreData.score;
+                scoreElement.textContent = `Jouw score: ${score}`;
+            } else {
+                document.getElementById('opponent-score').textContent = `${opponentName}: ${scoreData.score}`;
+            }
+        }
+
+        function submitGuess() {
+            if (currentPlayer !== 'guesser') return;
+            const guess = guessInput.value.toLowerCase();
+            if (guess === currentWord) {
+                feedbackElement.textContent = 'Goed geraden!';
+                confetti({
+                    particleCount: 100,
+                    spread: 70,
+                    origin: { y: 0.6 }
+                });
+                if (gameMode === 'online') {
+                    socket.emit('correctGuess', { table: currentTable, timeLeft: timeLeft });
+                } else {
+                    endRound();
+                }
+            } else {
+                feedbackElement.textContent = 'Probeer opnieuw!';
+            }
+            guessInput.value = '';
+        }
 
         // Drawing functions
         function handleStart(e) {
@@ -428,4 +439,3 @@ function submitGuess() {
     </script>
 </body>
 </html>
-                                                                                            
