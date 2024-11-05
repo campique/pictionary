@@ -86,7 +86,6 @@ function showLobby() {
 }
 
 function updateLobby(lobbyData) {
-    console.log("Updating lobby", lobbyData);
     tables.innerHTML = '';
     lobbyData.forEach((table, index) => {
         const tableElement = document.createElement('div');
@@ -225,8 +224,8 @@ function updateScore(scoreData) {
 
 function submitGuess() {
     if (currentPlayer !== 'guesser') return;
-    const guess = guessInput.value.toLowerCase();
-    if (guess === currentWord) {
+    const guess = guessInput.value.toLowerCase().trim();
+    if (guess === currentWord.toLowerCase()) {
         handleCorrectGuess();
     } else {
         feedbackElement.textContent = 'Probeer opnieuw!';
