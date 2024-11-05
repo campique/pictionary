@@ -50,6 +50,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
     window.addEventListener('resize', resizeCanvas);
 
+    guessInput.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            submitGuess();
+        }
+    });
+
     initializeColorPalette();
 });
 
@@ -160,11 +167,13 @@ function updateGameInfo() {
         guessInput.classList.add('hidden');
         submitGuessBtn.classList.add('hidden');
         clearCanvasBtn.classList.remove('hidden');
+        colorPalette.classList.remove('hidden');
     } else {
         wordToDrawElement.textContent = 'Raad het woord!';
         guessInput.classList.remove('hidden');
         submitGuessBtn.classList.remove('hidden');
         clearCanvasBtn.classList.add('hidden');
+        colorPalette.classList.add('hidden');
     }
 }
 
@@ -297,6 +306,7 @@ function getRandomWord() {
 
 function handleCorrectGuess() {
     feedbackElement.textContent = 'Correct geraden!';
+    showConfetti();
     if (gameMode === 'online') {
         socket.emit('correctGuess', { table: currentTable, timeLeft });
     } else {
@@ -329,6 +339,14 @@ function initializeColorPalette() {
         colorPalette.appendChild(colorOption);
     });
     document.querySelector('#color-palette div').click();
+}
+
+function showConfetti() {
+    confetti({
+        particleCount: 100,
+        spread: 70,
+        origin: { y: 0.6 }
+    });
 }
 
 console.log("Script initialization complete");
