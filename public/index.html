@@ -293,7 +293,7 @@
 
         function endRound() {
             feedbackElement.textContent = currentPlayer === 'drawer' ? 
-                'Tijd voorbij! Wissel van beurt.' : 
+                'Tijd voorbij! Wissel van beurt.' ; 
                 `Tijd voorbij! Het woord was: ${currentWord}`;
             if (gameMode === 'local') {
                 currentPlayer = currentPlayer === 'drawer' ? 'guesser' : 'drawer';
