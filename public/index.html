@@ -310,42 +310,34 @@
         }
 
         function updateScore(scoreData) {
-            if (scoreData.id === socket.id) {
-                score = scoreData.score;
-                scoreElement.textContent = `Jouw score: ${score}`;
-            } else {
-                document.getElementById('opponent-score').textContent = `${opponentName}: ${scoreData.score}`;
-                                                                                                    }
+    if (scoreData.id === socket.id) {
+        score = scoreData.score;
+        scoreElement.textContent = `Jouw score: ${score}`;
+    } else {
+        document.getElementById('opponent-score').textContent = `${opponentName}: ${scoreData.score}`;
+    }
+}
 
-        function updateScore(scoreData) {
-            if (scoreData.id === socket.id) {
-                score = scoreData.score;
-                scoreElement.textContent = `Jouw score: ${score}`;
-            } else {
-                document.getElementById('opponent-score').textContent = `${opponentName}: ${scoreData.score}`;
-            }
+function submitGuess() {
+    if (currentPlayer !== 'guesser') return;
+    const guess = guessInput.value.toLowerCase();
+    if (guess === currentWord) {
+        feedbackElement.textContent = 'Goed geraden!';
+        confetti({
+            particleCount: 100,
+            spread: 70,
+            origin: { y: 0.6 }
+        });
+        if (gameMode === 'online') {
+            socket.emit('correctGuess', { table: currentTable, timeLeft: timeLeft });
+        } else {
+            endRound();
         }
-
-        function submitGuess() {
-            if (currentPlayer !== 'guesser') return;
-            const guess = guessInput.value.toLowerCase();
-            if (guess === currentWord) {
-                feedbackElement.textContent = 'Goed geraden!';
-                confetti({
-                    particleCount: 100,
-                    spread: 70,
-                    origin: { y: 0.6 }
-                });
-                if (gameMode === 'online') {
-                    socket.emit('correctGuess', { table: currentTable, timeLeft: timeLeft });
-                } else {
-                    endRound();
-                }
-            } else {
-                feedbackElement.textContent = 'Probeer opnieuw!';
-            }
-            guessInput.value = '';
-        }
+    } else {
+        feedbackElement.textContent = 'Probeer opnieuw!';
+    }
+    guessInput.value = '';
+}
 
         // Drawing functions
         function handleStart(e) {
