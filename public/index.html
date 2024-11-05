@@ -314,8 +314,8 @@
 
         function endRound() {
     feedbackElement.textContent = currentPlayer === 'drawer' 
-        ? 'Tijd voorbij! Wissel van beurt.' 
-        : `Tijd voorbij! Het woord was: ${currentWord}`;
+    ? 'Tijd voorbij! Wissel van beurt.' 
+    : `Tijd voorbij! Het woord was: ${currentWord}`;
     if (gameMode === 'local') {
         currentPlayer = currentPlayer === 'drawer' ? 'guesser' : 'drawer';
         setTimeout(nextRound, 3000);
